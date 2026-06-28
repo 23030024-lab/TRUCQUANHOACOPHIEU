@@ -1,1 +1,7 @@
-Streamlit
+streamlit
+yfinance
+pandas
+numpy
+matplotlib
+mplfinance
+pymannkendall

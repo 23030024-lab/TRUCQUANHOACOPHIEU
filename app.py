@@ -1,148 +1,193 @@
 import streamlit as st
-import pymannkendall as mk
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import pymannkendall as mk
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 
+# =============================
+# CẤU HÌNH TRANG
+# =============================
 st.set_page_config(
-    page_title="Phân tích cổ phiếu VCB",
+    page_title="Phân tích cổ phiếu bằng Mann-Kendall",
+    page_icon="📈",
     layout="wide"
 )
 
-st.title("📈 PHÂN TÍCH CỔ PHIẾU VCB")
+# =============================
+# LOGO
+# =============================
+st.image("logo.jpg")
 
-# Sidebar
-st.sidebar.header("Tùy chọn")
+# =============================
+# TIÊU ĐỀ
+# =============================
+st.title("📈 TRỰC QUAN HÓA GIÁ CỔ PHIẾU VÀ KIỂM ĐỊNH MANN-KENDALL")
+st.subheader("TS. VŨ ĐỨC BÌNH")
 
-ticker = st.sidebar.text_input("Mã cổ phiếu", "VCB.VN")
-start_date = st.sidebar.date_input(
+st.markdown("---")
+
+# =============================
+# THÔNG TIN ĐẦU VÀO (DẠNG DỌC)
+# =============================
+st.header("📋 Thông tin đầu vào")
+
+ticker = st.text_input(
+    "Mã cổ phiếu",
+    value="VCB.VN"
+)
+
+start_date = st.date_input(
     "Ngày bắt đầu",
-    pd.to_datetime("2026-01-01")
+    value=pd.to_datetime("2026-01-01")
 )
-end_date = st.sidebar.date_input(
+
+end_date = st.date_input(
     "Ngày kết thúc",
-    pd.to_datetime("2026-06-27")
+    value=pd.to_datetime("2026-06-27")
 )
 
-if st.sidebar.button("Phân tích"):
+run = st.button(
+    "📈 Phân tích",
+    use_container_width=True
+)
 
-    # Tải dữ liệu
-    df = yf.download(
-        ticker,
-        start=start_date,
-        end=end_date,
-        progress=False
-    )
+# =============================
+# CHẠY PHÂN TÍCH
+# =============================
+if run:
+
+    with st.spinner("Đang tải dữ liệu..."):
+
+        df = yf.download(
+            ticker,
+            start=start_date,
+            end=end_date,
+            progress=False
+        )
 
     if df.empty:
-        st.error("Không tìm thấy dữ liệu!")
-    else:
+        st.error("Không tìm thấy dữ liệu.")
+        st.stop()
 
-        # Nếu dữ liệu có MultiIndex
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel(1)
+    # =============================
+    # XỬ LÝ DỮ LIỆU
+    # =============================
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.droplevel("Ticker")
 
-        # Điền ngày thiếu
-        full_date_range = pd.date_range(
-            start=df.index.min(),
-            end=df.index.max(),
-            freq='D'
-        )
+    full_date_range = pd.date_range(
+        start=df.index.min(),
+        end=df.index.max(),
+        freq="D"
+    )
 
-        df = df.reindex(full_date_range)
-        df = df.ffill()
+    df = df.reindex(full_date_range)
 
-        # Tính lợi nhuận
-        df['simple_ret'] = df['Close'].pct_change()
-        df['log_ret'] = np.log(
-            df['Close'] / df['Close'].shift(1)
-        )
+    df = df.ffill()
 
-        st.subheader("📋 Dữ liệu cổ phiếu")
-        st.dataframe(df.tail())
+    df["simple_ret"] = df["Close"].pct_change()
 
-        # ===== BIỂU ĐỒ GIÁ ĐÓNG CỬA + LOG RETURN =====
-        st.subheader("📊 Biểu đồ giá và Log Return")
+    df["log_ret"] = np.log(
+        df["Close"] / df["Close"].shift(1)
+    )
 
-        fig, ax = plt.subplots(
-            2, 1,
-            figsize=(10, 7),
-            sharex=True
-        )
+    # =============================
+    # HIỂN THỊ DỮ LIỆU
+    # =============================
+    st.subheader("📄 Dữ liệu")
 
-        # Giá đóng cửa
-        ax[0].plot(
-            df.index,
-            df['Close'],
-            color='red',
-            label='Giá đóng cửa'
-        )
+    st.dataframe(df)
 
-        ax[0].set_title(
-            f'GIÁ ĐÓNG CỬA CỦA {ticker}'
-        )
+    # =============================
+    # BIỂU ĐỒ GIÁ & LOG RETURN
+    # =============================
+    st.subheader("📈 Giá đóng cửa và Log Return")
 
-        ax[0].set_ylabel('VND')
-        ax[0].legend()
-        ax[0].grid(True)
+    fig, ax = plt.subplots(
+        2,
+        1,
+        figsize=(10, 8),
+        sharex=True
+    )
 
-        # Log Return
-        ax[1].plot(
-            df.index,
-            df['log_ret'],
-            color='green',
-            label='Log Return'
-        )
+    ax[0].plot(
+        df.index,
+        df["Close"],
+        color="red",
+        linewidth=2,
+        label="Close Price"
+    )
 
-        ax[1].set_title(f'{ticker} Log Return')
-        ax[1].set_ylabel('Log Return')
-        ax[1].set_xlabel('Date')
-        ax[1].legend()
-        ax[1].grid(True)
+    ax[0].set_title("Giá đóng cửa")
+    ax[0].set_ylabel("VND")
+    ax[0].legend()
+    ax[0].grid(True)
 
-        plt.tight_layout()
+    ax[1].plot(
+        df.index,
+        df["log_ret"],
+        color="green",
+        linewidth=1.5,
+        label="Log Return"
+    )
 
-        st.pyplot(fig)
+    ax[1].set_title("Log Return")
+    ax[1].set_ylabel("Return")
+    ax[1].set_xlabel("Date")
+    ax[1].legend()
+ax[1].grid(True)
 
-        # ===== BIỂU ĐỒ NẾN =====
-        st.subheader("🕯️ Biểu đồ nến")
+    plt.tight_layout()
 
-        fig2, axlist = mpf.plot(
-            df,
-            type='candle',
-            mav=(10, 20),
-            volume=True,
-            style='yahoo',
-            title=f'GIÁ CỔ PHIẾU {ticker}',
-            figsize=(10, 6),
-            returnfig=True
-        )
+    st.pyplot(fig)
 
-        st.pyplot(fig2)
+    # =============================
+    # BIỂU ĐỒ NẾN
+    # =============================
+    st.subheader("🕯️ Biểu đồ nến")
 
-        # ===== KIỂM ĐỊNH MANN-KENDALL =====
-        st.subheader("📈 Kiểm định Mann-Kendall")
+    fig2, _ = mpf.plot(
+        df,
+        type="candle",
+        mav=(10, 20),
+        volume=True,
+        style="yahoo",
+        figsize=(12, 6),
+        title=ticker,
+        returnfig=True
+    )
 
-        close_prices = df["Close"].dropna().reset_index(drop=True)
+    st.pyplot(fig2)
 
-        result = mk.original_test(close_prices)
+    # =============================
+    # KIỂM ĐỊNH MANN-KENDALL
+    # =============================
+    close_prices = df["Close"].dropna().reset_index(drop=True)
 
-        col1, col2, col3, col4 = st.columns(4)
+    result = mk.original_test(close_prices)
 
-        col1.metric("Trend", result.trend)
-        col2.metric("p-value", f"{result.p:.4f}")
-        col3.metric("Tau", f"{result.Tau:.4f}")
-        col4.metric("Var(S)", f"{result.var_s:.2f}")
+    st.subheader("📊 Kết quả kiểm định Mann-Kendall")
 
-        st.write("### Diễn giải")
+    col1, col2 = st.columns(2)
 
-        if result.p < 0.05:
-            st.success(
-                "Có xu hướng đáng kể về mặt thống kê."
-            )
+    with col1:
+        st.metric("Trend", result.trend)
+        st.metric("Tau", f"{result.Tau:.4f}")
+
+    with col2:
+        st.metric("p-value", f"{result.p:.6f}")
+        st.metric("Variance S", f"{result.var_s:.2f}")
+
+    st.markdown("---")
+
+    if result.p < 0.05:
+        if result.trend == "increasing":
+            st.success("Có xu hướng **TĂNG** có ý nghĩa thống kê (p < 0.05).")
+        elif result.trend == "decreasing":
+            st.success("Có xu hướng **GIẢM** có ý nghĩa thống kê (p < 0.05).")
         else:
-            st.warning(
-                "Không có xu hướng rõ ràng."
-            )
+            st.success("Có xu hướng đáng kể về mặt thống kê.")
+    else:
+        st.warning("Không phát hiện xu hướng có ý nghĩa thống kê (p ≥ 0.05).")

@@ -10,7 +10,7 @@ import mplfinance as mpf
 # CẤU HÌNH TRANG
 # =============================
 st.set_page_config(
-    page_title="Phân tích cổ phiếu bằng Mann-Kendall",
+    page_title="",
     page_icon="📈",
     layout="wide"
 )
@@ -24,7 +24,7 @@ st.image("logo.jpg")
 # TIÊU ĐỀ
 # =============================
 st.title("📈 TRỰC QUAN HÓA GIÁ CỔ PHIẾU VÀ KIỂM ĐỊNH MANN-KENDALL")
-st.subheader("TS. VŨ ĐỨC BÌNH")
+st.subheader("HUỲNH THỊ NGỌC TIÊN ĐỀ 9")
 
 st.markdown("---")
 
